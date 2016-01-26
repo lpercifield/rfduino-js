@@ -63,6 +63,7 @@ var onDeviceDiscoveredCallback = function(peripheral) {
                 for (var i = 0; i < characteristics.length; i++) {
                     if (characteristics[i].uuid === rfduino.receiveCharacteristicUUID) {
                         receiveCharacteristic = characteristics[i];
+                        console.log("Got receiveCharacteristicUUID: "+characteristics[i].uuid);
                         break;
                     }
                 }
@@ -72,19 +73,19 @@ var onDeviceDiscoveredCallback = function(peripheral) {
                         // temperature service sends a float
                         var marker = data.readInt16LE(0);
                         //console.log(marker);
-                        // switch (marker) {
-                        //   case 11:
-                        //     console.log("1-16: ")
-                        //     break;
-                        //   case 12:
-                        //     console.log("17-32: ")
-                        //     break;
-                        //   case 99:
-                        //     console.log("READING COMPLETE")
-                        //     break;
-                        //   default:
-                        //     console.log(data.readFloatLE(0) + " PSI");
-                        // }
+                        switch (marker) {
+                          case 11:
+                            console.log("1-16: ")
+                            break;
+                          case 12:
+                            console.log("17-32: ")
+                            break;
+                          case 99:
+                            console.log("READING COMPLETE")
+                            break;
+                          default:
+                            console.log(data.readFloatLE(0) + " PSI");
+                        }
                         // if(data.readInt16LE(0) == 11){
                         //   console.log("1-16: ")
                         // }else if

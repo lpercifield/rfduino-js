@@ -7,6 +7,12 @@ var noble = require('noble'),
     rfduino = require('./rfduino'),
     _ = require('underscore');
 
+var sampleCounter = 1;
+var connectedPeripheral;
+var dataArray1 = [];
+var dataArray2 = [];
+var whichArray;
+
 // TODO why does this need to be wrapped?
 var stop = function() {
     noble.stopScanning();
@@ -14,7 +20,7 @@ var stop = function() {
 
 noble.on('scanStart', function() {
     console.log('Scan started');
-    setTimeout(stop, 5000);
+    setTimeout(stop, 10000);
 });
 
 noble.on('scanStop', function() {
@@ -32,10 +38,13 @@ var onDeviceDiscoveredCallback = function(peripheral) {
         peripheral.on('connect', function() {
             console.log("got connect event");
             peripheral.discoverServices();
+            connectedPeripheral = peripheral;
         });
 
         peripheral.on('disconnect', function() {
             console.log('Disconnected');
+            connectedPeripheral = null;
+            noble.startScanning([rfduino.serviceUUID], false);
         });
 
         peripheral.on('servicesDiscover', function(services) {
@@ -73,18 +82,51 @@ var onDeviceDiscoveredCallback = function(peripheral) {
                         // temperature service sends a float
                         var marker = data.readInt16LE(0);
                         //console.log(marker);
+
                         switch (marker) {
                           case 11:
-                            console.log("1-16: ")
+                            //console.log("1-16: ")
+                            whichArray = 1;
+                            sampleCounter = 1;
                             break;
                           case 12:
-                            console.log("17-32: ")
+                            //console.log("17-32: ")
+                            whichArray = 2;
+                            sampleCounter = 1
                             break;
                           case 99:
-                            console.log("READING COMPLETE")
+                            //console.log("READING COMPLETE")
+                            console.log(dataArray1.toString());
+                            console.log(dataArray2.toString());
+                            sampleCounter = 1;
                             break;
                           default:
-                            console.log(data.readFloatLE(0) + " PSI");
+                            // if(sampleCounter == 5){
+                            //     console.log(sampleCounter+": "+data.readFloatLE(0).toFixed(2) + " PSI");
+                            // }
+                            switch (whichArray) {
+                              case 1:
+                                //console.log(sampleCounter);
+                                if(sampleCounter<=16){
+                                  dataArray1[sampleCounter-1]=data.readFloatLE(0).toFixed(2);
+                                }
+                                //console.log(sampleCounter+": "+data.readFloatLE(0).toFixed(2) + " PSI");
+
+                                break;
+                              case 2:
+                                //console.log(sampleCounter+": "+data.readFloatLE(0).toFixed(2) + " PSI");
+                                if(sampleCounter<=16){
+                                  dataArray2[sampleCounter-1]=data.readFloatLE(0).toFixed(2);
+                                }
+                                break;
+                              default:
+
+                            }
+                            sampleCounter++;
+
+                            //console.log(sampleCounter+": "+data.readInt16LE(0));
+
+                            //
                         }
                         // if(data.readInt16LE(0) == 11){
                         //   console.log("1-16: ")
@@ -115,3 +157,25 @@ noble.on('stateChange', function(state) {
 });
 
 noble.on('discover', onDeviceDiscoveredCallback);
+
+function exitHandler(options, err) {
+    if (options.cleanup){
+      console.log('clean');
+      //console.log(connectedPeripheral);
+      if(connectedPeripheral){
+        noble.disconnect(connectedPeripheral.uuid);
+      }
+      //connectedPeripheral.disconnect();
+    }
+    if (err) console.log(err.stack);
+    if (options.exit) process.exit();
+}
+
+//do something when app is closing
+process.on('exit', exitHandler.bind(null,{cleanup:true}));
+
+//catches ctrl+c event
+process.on('SIGINT', exitHandler.bind(null, {exit:true}));
+
+//catches uncaught exceptions
+process.on('uncaughtException', exitHandler.bind(null, {exit:true}));
